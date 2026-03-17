@@ -4,6 +4,9 @@ export type LayoutId = 'strip-4' | 'strip-2' | 'grid-4' | 'single';
 // Filter options
 export type FilterId = 'none' | 'grayscale' | 'sepia' | 'vintage' | 'vivid' | 'cool' | 'warm' | 'fade';
 
+// Frame Theme options
+export type ThemeId = 'none' | 'polkadot' | 'grid' | 'hearts' | 'stars' | 'film' | 'y2k' | 'floral' | 'retro' | 'starry';
+
 // Timer options (seconds; 0 = instant)
 export type TimerDuration = 0 | 3 | 5 | 10;
 
@@ -36,6 +39,7 @@ export interface FrameSettings {
   borderWidth: number;      // border around each photo (0–16)
   borderColor: string;      // border color
   borderRadius: number;     // photo corner radius (0–32)
+  theme: ThemeId;           // decorative theme for the frame
 }
 
 // A text overlay drawn freely on the final composite

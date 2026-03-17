@@ -1,4 +1,5 @@
 import type { LayoutConfig, TextOverlay, FrameSettings } from '../types';
+import { drawThemeBackground, drawThemeForeground } from './themes';
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -53,7 +54,7 @@ function drawImageCover(
 }
 
 /** Transform a layout slot using frame padding + gap settings */
-function applyFrameToSlot(
+export function applyFrameToSlot(
   slot: { x: number; y: number; width: number; height: number },
   frame: FrameSettings,
   canvasW: number,
@@ -110,6 +111,7 @@ const DEFAULT_FRAME: FrameSettings = {
   borderWidth: 0,
   borderColor: '#0D0D0D',
   borderRadius: 0,
+  theme: 'none',
 };
 
 /**
@@ -127,10 +129,9 @@ export function drawComposite(
   const w = layout.canvasWidth;
   const h = layout.canvasHeight;
 
-  // Background
+  // Background + pattern
   ctx.clearRect(0, 0, w, h);
-  ctx.fillStyle = frameSettings.backgroundColor;
-  ctx.fillRect(0, 0, w, h);
+  drawThemeBackground(ctx, frameSettings.theme, w, h, frameSettings.backgroundColor);
 
   // Photos in slots
   for (let i = 0; i < layout.slots.length; i++) {
@@ -153,6 +154,9 @@ export function drawComposite(
       ctx.restore();
     }
   }
+
+  // Draw theme foreground decorations (film holes, Y2K sparkles, etc)
+  drawThemeForeground(ctx, frameSettings.theme, w, h, frameSettings.padding);
 
   // Text overlays
   if (textOverlays.length > 0) {

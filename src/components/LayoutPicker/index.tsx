@@ -1,45 +1,97 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Check } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { LAYOUTS } from '../../utils/layouts';
+import { THEMES, getThemeIcon } from '../../utils/themes';
+import { drawComposite, applyFrameToSlot } from '../../utils/compositor';
 import { useSessionStore } from '../../store/sessionStore';
-import type { LayoutId } from '../../types';
+import type { LayoutId, ThemeId } from '../../types';
 
 function LayoutThumbnail({
   slots,
   canvasW,
   canvasH,
+  theme,
 }: {
   slots: { x: number; y: number; width: number; height: number }[];
   canvasW: number;
   canvasH: number;
+  theme: ThemeId;
 }) {
-  const vw = 100;
-  const vh = (canvasH / canvasW) * 100;
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Use a fixed thumb size (CSS will handle actual display width via w-full)
+    const thumbW = 400;
+    const thumbH = (canvasH / canvasW) * thumbW;
+    canvas.width = thumbW;
+    canvas.height = thumbH;
+
+    // Scale context so we can draw using original canvasW/H coordinates
+    const scale = thumbW / canvasW;
+    ctx.scale(scale, scale);
+
+    // Reconstruct the real layout so drawComposite uses true coordinates
+    const realLayout = {
+      id: 'thumb-preview',
+      label: '',
+      photoCount: slots.length,
+      canvasWidth: canvasW,
+      canvasHeight: canvasH,
+      slots: slots, // use exact slots
+    };
+
+    // Frame settings - use real unscaled padding values
+    const basePadding = 20;
+    const baseGap = 8;
+    
+    const frame = {
+      backgroundColor: '#FAFAF7', // slightly off-white to contrast
+      theme,
+      padding: basePadding,
+      gap: baseGap,
+      borderWidth: 0,
+      borderColor: '#0D0D0D',
+      borderRadius: 0,
+    };
+
+    // 1. Draw Background and Theme using actual sizes
+    ctx.clearRect(0, 0, canvasW, canvasH);
+    drawComposite(ctx, [], realLayout as any, [], frame);
+
+    // 2. Draw grey rectangles for the slots since there are no images
+    slots.forEach(rawSlot => {
+      // Use the exact same math as the real compositor to handle scaling & padding
+      const slot = applyFrameToSlot(rawSlot, frame, canvasW, canvasH);
+      
+      ctx.fillStyle = 'rgba(13, 13, 13, 0.1)'; // 'oklch(78% 0.008 90)' equivalent
+      ctx.fillRect(slot.x, slot.y, slot.width, slot.height);
+    });
+
+    // reset transform for next render
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+  }, [slots, canvasW, canvasH, theme]);
+
   return (
-    <svg viewBox={`0 0 ${vw} ${vh}`} className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-      <rect width={vw} height={vh} fill="oklch(88% 0.008 90)" />
-      {slots.map((s, i) => (
-        <rect
-          key={i}
-          x={(s.x / canvasW) * vw}
-          y={(s.y / canvasH) * vh}
-          width={(s.width / canvasW) * vw}
-          height={(s.height / canvasH) * vh}
-          fill="oklch(78% 0.008 90)"
-        />
-      ))}
-    </svg>
+    <canvas ref={canvasRef} className="w-full h-full object-contain bg-surface" />
   );
 }
 
 export default function LayoutPicker() {
-  const { setLayout, setStep, session } = useSessionStore();
-  const [selected, setSelected] = useState<LayoutId>(session.layout);
+  const { setLayout, setFrameSettings, setStep, session } = useSessionStore();
+  const [selectedLayout, setSelectedLayout] = useState<LayoutId>(session.layout);
+  const [selectedTheme, setSelectedTheme] = useState<ThemeId>(session.frameSettings.theme);
 
   const handleNext = () => {
-    setLayout(selected);
+    setLayout(selectedLayout);
+    setFrameSettings({ ...session.frameSettings, theme: selectedTheme });
     setStep('camera'); // skip pick-filter — filter is now in CameraView
   };
 
@@ -75,14 +127,14 @@ export default function LayoutPicker() {
       </motion.div>
 
       {/* Layout grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 flex-1">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {LAYOUTS.map((layout, i) => {
-          const isSelected = selected === layout.id;
+          const isSelected = selectedLayout === layout.id;
           return (
             <motion.button
               key={layout.id}
               id={`layout-${layout.id}`}
-              onClick={() => setSelected(layout.id)}
+              onClick={() => setSelectedLayout(layout.id)}
               className={cn(
                 'bg-surface-alt rounded-2xl p-4 cursor-pointer transition-all text-left',
                 isSelected && 'ring-2 ring-brand ring-offset-2 ring-offset-surface',
@@ -98,7 +150,7 @@ export default function LayoutPicker() {
                   aspectRatio: `${layout.canvasWidth}/${Math.min(layout.canvasHeight, layout.canvasWidth * 1.4)}`,
                 }}
               >
-                <LayoutThumbnail slots={layout.slots} canvasW={layout.canvasWidth} canvasH={layout.canvasHeight} />
+                <LayoutThumbnail slots={layout.slots} canvasW={layout.canvasWidth} canvasH={layout.canvasHeight} theme={selectedTheme} />
               </div>
               <div className="flex items-start justify-between gap-1">
                 <div>
@@ -115,6 +167,34 @@ export default function LayoutPicker() {
           );
         })}
       </div>
+
+      {/* Theme selection */}
+      <motion.div
+        className="mt-8 flex-1"
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15, duration: 0.25 }}
+      >
+        <h3 className="font-body font-medium text-lg text-ink mb-1">Pilih tema dekorasi</h3>
+        <p className="font-body text-xs text-ink-muted mb-4">Kamu masih bisa menggantinya lagi nanti</p>
+        <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-3">
+          {THEMES.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setSelectedTheme(t.id)}
+              className={cn(
+                'flex flex-col items-center justify-center gap-2 p-3 rounded-2xl border-2 transition-all',
+                selectedTheme === t.id ? 'border-brand bg-brand-light/10 text-brand' : 'border-border-light bg-surface-alt hover:border-ink-muted text-ink-muted hover:text-ink',
+              )}
+            >
+              <div className="w-8 h-8 rounded-full bg-surface shadow-sm border border-border-light flex items-center justify-center font-body text-xs">
+                {getThemeIcon(t.id)}
+              </div>
+              <span className="font-body text-[10px] font-medium text-center leading-tight">{t.label}</span>
+            </button>
+          ))}
+        </div>
+      </motion.div>
 
       {/* Navigation */}
       <motion.div

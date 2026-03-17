@@ -11,6 +11,7 @@ export const DEFAULT_FRAME_SETTINGS: FrameSettings = {
   borderWidth: 0,
   borderColor: '#0D0D0D',
   borderRadius: 0,
+  theme: 'none',
 };
 
 const DEFAULT_SESSION = {

@@ -5,8 +5,9 @@ import { cn } from '../../utils/cn';
 import { useSessionStore } from '../../store/sessionStore';
 import { useCompositor } from '../../hooks/useCompositor';
 import { LAYOUTS } from '../../utils/layouts';
+import { THEMES, getThemeIcon } from '../../utils/themes';
 import { preloadImages, drawComposite } from '../../utils/compositor';
-import type { TextOverlay, FrameSettings, LayoutId } from '../../types';
+import type { TextOverlay, FrameSettings, LayoutId, ThemeId } from '../../types';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -173,6 +174,44 @@ function BingkaiTab({
   );
 }
 
+// ─── Tab: Tema (decorative themes) ──────────────────────────────────────────
+function TemaTab({
+  frame, setFrame,
+}: {
+  frame: FrameSettings;
+  setFrame: (f: FrameSettings) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-5">
+      <div>
+        <p className="font-body font-medium text-xs text-ink mb-3">Pilih Tema</p>
+        <div className="grid grid-cols-3 gap-3">
+          {THEMES.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setFrame({ ...frame, theme: t.id })}
+              className={cn(
+                'flex flex-col items-center gap-2 p-3 rounded-2xl border-2 transition-all',
+                frame.theme === t.id ? 'border-brand bg-brand-light/10 text-brand' : 'border-border-light bg-surface-alt hover:border-ink-muted text-ink-muted hover:text-ink',
+              )}
+            >
+              <div className="w-8 h-8 rounded-full bg-surface shadow-sm border border-border-light flex items-center justify-center font-body text-xs">
+                {getThemeIcon(t.id)}
+              </div>
+              <span className="font-body text-[10px] font-medium">{t.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="bg-brand-light/20 p-3 rounded-xl border border-brand-light/40">
+        <p className="font-body text-xs text-brand text-center">
+          Warna tema (seperti garis atau border) akan menyesuaikan dengan <strong>Warna Latar</strong> yang kamu pilih di tab Bingkai.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Text overlay card ────────────────────────────────────────────────────────
 function TextCard({
   overlay, isSelected, onSelect, onChange, onDelete,
@@ -295,7 +334,7 @@ export default function FrameEditor() {
     useSessionStore();
   const { isLoading, buildComposite } = useCompositor();
 
-  const [activeTab, setActiveTab] = useState<'frame' | 'text'>('frame');
+  const [activeTab, setActiveTab] = useState<'frame' | 'theme' | 'text'>('frame');
   const [frame, setFrameLocal] = useState<FrameSettings>({ ...session.frameSettings });
   const [selectedLayout, setSelectedLayoutLocal] = useState<LayoutId>(session.layout);
   const [overlays, setOverlays] = useState<TextOverlay[]>(session.textOverlays);
@@ -488,14 +527,15 @@ export default function FrameEditor() {
       </div>
 
       {/* ── Tabs ── */}
-      <div className="flex gap-1 bg-surface-alt rounded-full p-1 mb-4 self-start">
+      <div className="flex gap-1 bg-surface-alt rounded-full p-1 mb-4 self-start mx-auto w-full max-w-[280px]">
         {([
           { id: 'frame', label: 'Bingkai' },
+          { id: 'theme', label: 'Tema' },
           { id: 'text',  label: 'Teks' },
         ] as const).map((t) => (
           <button key={t.id} onClick={() => setActiveTab(t.id)}
             className={cn(
-              'font-body font-medium text-sm px-5 py-2 rounded-full transition-all',
+              'flex-1 font-body font-medium text-sm py-2 rounded-full transition-all text-center',
               activeTab === t.id ? 'bg-ink text-surface shadow-sm' : 'text-ink-muted hover:text-ink',
             )}>
             {t.label}
@@ -516,6 +556,13 @@ export default function FrameEditor() {
                 selectedLayout={selectedLayout} setSelectedLayout={updateLayout}
                 photoCount={session.photos.length}
               />
+            </motion.div>
+          ) : activeTab === 'theme' ? (
+            <motion.div key="theme"
+              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.15 }}
+            >
+              <TemaTab frame={frame} setFrame={updateFrame} />
             </motion.div>
           ) : (
             <motion.div key="text"
