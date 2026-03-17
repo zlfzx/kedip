@@ -33,9 +33,9 @@ jobs:
 
       - name: Build
         run: npm run build
-        env:
-          # Sets /repo-name/ as the base path so assets load correctly on GitHub Pages
-          VITE_BASE_PATH: /${{ github.event.repository.name }}/
+        # env:
+        #   # Sets /repo-name/ as the base path so assets load correctly on GitHub Pages
+        #   VITE_BASE_PATH: /${{ github.event.repository.name }}/
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
