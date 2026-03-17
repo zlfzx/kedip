@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+@theme {
+  /* === Brand palette === */
+  --color-brand:        oklch(68% 0.18 355);   /* #FF6B8A — pink utama */
+  --color-brand-light:  oklch(90% 0.08 355);   /* #FFD6DF — pink muda */
+  --color-brand-dark:   oklch(46% 0.18 355);   /* #C44060 — pink tua */
+
+  /* === Surfaces === */
+  --color-surface:      oklch(98% 0.006 90);   /* #FAFAF7 — background utama */
+  --color-surface-alt:  oklch(94% 0.008 90);   /* #F2EFE6 — surface card */
+
+  /* === Text === */
+  --color-ink:          oklch(12% 0 0);        /* #0D0D0D — teks & CTA */
+  --color-ink-muted:    oklch(52% 0.01 90);    /* #8A8880 — teks sekunder */
+
+  /* === Borders === */
+  --color-border-light: oklch(88% 0.008 90);   /* #E8E5DC — border tipis */
+
+  /* === Accents === */
+  --color-yellow:       oklch(92% 0.18 95);    /* #FFE566 — warning/info */
+  --color-teal:         oklch(78% 0.14 175);   /* #3ECFB2 — sukses */
+
+  /* === Typography === */
+  --font-display: 'DM Serif Display', Georgia, serif;
+  --font-body:    'DM Sans', ui-sans-serif, system-ui, sans-serif;
+
+  /* === Radii === */
+  --radius-sm:   0.25rem;  /* 4px */
+  --radius-lg:   0.5rem;   /* 8px */
+  --radius-xl:   0.75rem;  /* 12px */
+  --radius-2xl:  1.25rem;  /* 20px */
+  --radius-full: 9999px;
+}
+
+/* Smooth scrolling */
+html { scroll-behavior: smooth; }
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

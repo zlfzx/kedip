@@ -1,0 +1,11 @@
+/* LandingPage component styles */
+.landing-bg {
+  background: radial-gradient(ellipse at 60% 40%, oklch(45% 0.22 270 / 0.35) 0%, transparent 65%),
+              radial-gradient(ellipse at 20% 80%, oklch(60% 0.20 340 / 0.25) 0%, transparent 55%),
+              oklch(14% 0.02 270);
+}
+
+.glassbtn {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
