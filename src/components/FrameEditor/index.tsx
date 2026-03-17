@@ -111,7 +111,7 @@ function BingkaiTab({
       {/* Background color */}
       <div>
         <p className="font-body font-medium text-xs text-ink mb-2">Warna latar</p>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap px-0.5">
           {BG_PRESETS.map(({ label, value }) => (
             <button key={value} onClick={() => patch({ backgroundColor: value })}
               title={label}
