@@ -122,10 +122,28 @@ export default function CameraView() {
       reader.readAsDataURL(file);
     });
 
+  const applyFilterToUpload = (dataUrl: string, filterId: FilterId): Promise<string> => {
+    if (filterId === 'none') return Promise.resolve(dataUrl);
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d')!;
+        ctx.filter = FILTERS[filterId] || 'none';
+        ctx.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL('image/jpeg', 0.92));
+      };
+      img.src = dataUrl;
+    });
+  };
+
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const dataUrl = await readFileAsDataUrl(file);
+    const rawDataUrl = await readFileAsDataUrl(file);
+    const dataUrl = await applyFilterToUpload(rawDataUrl, session.filter);
     if (isRetakeMode) {
       replacePhoto(retakeIndex!, dataUrl);
       setRetakeIndex(null);
@@ -139,7 +157,9 @@ export default function CameraView() {
   const handleReplaceUpload = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    replacePhoto(index, await readFileAsDataUrl(file));
+    const rawDataUrl = await readFileAsDataUrl(file);
+    const dataUrl = await applyFilterToUpload(rawDataUrl, session.filter);
+    replacePhoto(index, dataUrl);
     e.target.value = '';
   };
 

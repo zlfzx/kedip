@@ -318,7 +318,6 @@ export default function FrameEditor() {
         const url = await buildComposite(
           session.photos,
           curLayoutId,
-          session.filter,
           curOverlays,
           curFrame,
         );
@@ -379,7 +378,7 @@ export default function FrameEditor() {
     setFrameSettings(frame);
     setTextOverlays(overlays);
     // Build final composite
-    const final = await buildComposite(session.photos, selectedLayout, session.filter, overlays, frame);
+    const final = await buildComposite(session.photos, selectedLayout, overlays, frame);
     if (final) setComposite(final);
     setStep('download');
   };

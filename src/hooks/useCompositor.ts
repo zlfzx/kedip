@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { compositePhotos } from '../utils/compositor';
 import { useSessionStore } from '../store/sessionStore';
 import { getLayout } from '../utils/layouts';
-import type { FilterId, LayoutId, TextOverlay, FrameSettings } from '../types';
+import type { LayoutId, TextOverlay, FrameSettings } from '../types';
 
 export function useCompositor() {
   const [isLoading, setIsLoading] = useState(false);
@@ -13,7 +13,6 @@ export function useCompositor() {
     async (
       photos: string[],
       layoutId: LayoutId,
-      filter: FilterId,
       textOverlays: TextOverlay[] = [],
       frameSettings?: FrameSettings,
     ) => {
@@ -21,7 +20,7 @@ export function useCompositor() {
       setError(null);
       try {
         const layout = getLayout(layoutId);
-        const dataUrl = await compositePhotos(photos, layout, filter, textOverlays, frameSettings);
+        const dataUrl = await compositePhotos(photos, layout, textOverlays, frameSettings);
         setComposite(dataUrl);
         return dataUrl;
       } catch (err) {

@@ -1,5 +1,4 @@
-import type { FilterId, LayoutConfig, TextOverlay, FrameSettings } from '../types';
-import { FILTERS } from './filters';
+import type { LayoutConfig, TextOverlay, FrameSettings } from '../types';
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -102,7 +101,6 @@ function drawTextOverlays(
 export async function compositePhotos(
   photos: string[],
   layout: LayoutConfig,
-  filter: FilterId,
   textOverlays: TextOverlay[] = [],
   frameSettings: FrameSettings = {
     backgroundColor: '#ffffff',
@@ -133,9 +131,7 @@ export async function compositePhotos(
     // Clip to rounded slot
     roundedRect(ctx, slot.x, slot.y, slot.width, slot.height, frameSettings.borderRadius);
     ctx.clip();
-    ctx.filter = FILTERS[filter] || 'none';
     drawImageCover(ctx, img, slot.x, slot.y, slot.width, slot.height);
-    ctx.filter = 'none';
     ctx.restore();
 
     // Border drawn on top (inside)

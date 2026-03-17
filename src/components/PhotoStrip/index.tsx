@@ -14,7 +14,7 @@ export default function PhotoStrip() {
 
   useEffect(() => {
     if (session.photos.length === layout.photoCount && !session.compositeImage) {
-      buildComposite(session.photos, session.layout, session.filter, session.textOverlays, session.frameSettings);
+      buildComposite(session.photos, session.layout, session.textOverlays, session.frameSettings);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
