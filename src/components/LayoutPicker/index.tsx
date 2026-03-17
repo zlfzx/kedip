@@ -93,7 +93,7 @@ export default function LayoutPicker() {
               whileTap={{ scale: 0.97 }}
             >
               <div
-                className="bg-border-light rounded-xl overflow-hidden mb-3"
+                className="bg-border-light overflow-hidden mb-3"
                 style={{
                   aspectRatio: `${layout.canvasWidth}/${Math.min(layout.canvasHeight, layout.canvasWidth * 1.4)}`,
                 }}

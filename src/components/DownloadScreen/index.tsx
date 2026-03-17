@@ -55,7 +55,7 @@ export default function DownloadScreen() {
       <div className="flex flex-1 items-start justify-center">
         {session.compositeImage ? (
           <motion.div
-            className="rounded-2xl overflow-hidden border border-border-light shadow-sm"
+            className="overflow-hidden border border-border-light shadow-sm"
             style={{ maxWidth: 320, width: '100%' }}
             initial={{ opacity: 0, scale: 0.94 }}
             animate={{ opacity: 1, scale: 1 }}
