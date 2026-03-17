@@ -9,6 +9,11 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
+/** Pre-load an array of data-URL photos and return HTMLImageElement[]. Call once. */
+export async function preloadImages(photos: string[]): Promise<HTMLImageElement[]> {
+  return Promise.all(photos.map(loadImage));
+}
+
 /** Rounded rect path helper (works in all modern browsers) */
 function roundedRect(
   ctx: CanvasRenderingContext2D,
@@ -98,43 +103,47 @@ function drawTextOverlays(
   }
 }
 
-export async function compositePhotos(
-  photos: string[],
+const DEFAULT_FRAME: FrameSettings = {
+  backgroundColor: '#ffffff',
+  padding: 20,
+  gap: 8,
+  borderWidth: 0,
+  borderColor: '#0D0D0D',
+  borderRadius: 0,
+};
+
+/**
+ * Draw the composite directly onto the provided canvas context.
+ * Accepts pre-loaded HTMLImageElement[] so no async image loading is needed.
+ * This is synchronous and flicker-free — ideal for live preview.
+ */
+export function drawComposite(
+  ctx: CanvasRenderingContext2D,
+  images: HTMLImageElement[],
   layout: LayoutConfig,
   textOverlays: TextOverlay[] = [],
-  frameSettings: FrameSettings = {
-    backgroundColor: '#ffffff',
-    padding: 20,
-    gap: 8,
-    borderWidth: 0,
-    borderColor: '#0D0D0D',
-    borderRadius: 0,
-  },
-): Promise<string> {
-  const canvas = document.createElement('canvas');
-  canvas.width = layout.canvasWidth;
-  canvas.height = layout.canvasHeight;
-  const ctx = canvas.getContext('2d')!;
+  frameSettings: FrameSettings = DEFAULT_FRAME,
+) {
+  const w = layout.canvasWidth;
+  const h = layout.canvasHeight;
 
   // Background
+  ctx.clearRect(0, 0, w, h);
   ctx.fillStyle = frameSettings.backgroundColor;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0, 0, w, h);
 
   // Photos in slots
   for (let i = 0; i < layout.slots.length; i++) {
-    if (!photos[i]) continue;
+    if (!images[i]) continue;
     const raw = layout.slots[i];
-    const slot = applyFrameToSlot(raw, frameSettings, canvas.width, canvas.height);
-    const img = await loadImage(photos[i]);
+    const slot = applyFrameToSlot(raw, frameSettings, w, h);
 
     ctx.save();
-    // Clip to rounded slot
     roundedRect(ctx, slot.x, slot.y, slot.width, slot.height, frameSettings.borderRadius);
     ctx.clip();
-    drawImageCover(ctx, img, slot.x, slot.y, slot.width, slot.height);
+    drawImageCover(ctx, images[i], slot.x, slot.y, slot.width, slot.height);
     ctx.restore();
 
-    // Border drawn on top (inside)
     if (frameSettings.borderWidth > 0) {
       ctx.save();
       roundedRect(ctx, slot.x, slot.y, slot.width, slot.height, frameSettings.borderRadius);
@@ -145,10 +154,30 @@ export async function compositePhotos(
     }
   }
 
-  // Text overlays (on top of everything)
+  // Text overlays
   if (textOverlays.length > 0) {
-    drawTextOverlays(ctx, textOverlays, canvas.width, canvas.height);
+    drawTextOverlays(ctx, textOverlays, w, h);
   }
+}
+
+/**
+ * Build the final composite as a PNG data URL (for download / share).
+ * Uses loadImage internally — suitable for one-shot final export.
+ */
+export async function compositePhotos(
+  photos: string[],
+  layout: LayoutConfig,
+  textOverlays: TextOverlay[] = [],
+  frameSettings: FrameSettings = DEFAULT_FRAME,
+): Promise<string> {
+  const images = await preloadImages(photos);
+  const canvas = document.createElement('canvas');
+  canvas.width = layout.canvasWidth;
+  canvas.height = layout.canvasHeight;
+  const ctx = canvas.getContext('2d')!;
+
+  drawComposite(ctx, images, layout, textOverlays, frameSettings);
 
   return canvas.toDataURL('image/png');
 }
+

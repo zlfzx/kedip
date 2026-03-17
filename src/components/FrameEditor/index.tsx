@@ -5,6 +5,7 @@ import { cn } from '../../utils/cn';
 import { useSessionStore } from '../../store/sessionStore';
 import { useCompositor } from '../../hooks/useCompositor';
 import { LAYOUTS } from '../../utils/layouts';
+import { preloadImages, drawComposite } from '../../utils/compositor';
 import type { TextOverlay, FrameSettings, LayoutId } from '../../types';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -299,55 +300,66 @@ export default function FrameEditor() {
   const [selectedLayout, setSelectedLayoutLocal] = useState<LayoutId>(session.layout);
   const [overlays, setOverlays] = useState<TextOverlay[]>(session.textOverlays);
   const [selectedOverlayId, setSelectedOverlayId] = useState<string | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(session.compositeImage);
-  const [previewing, setPreviewing] = useState(false);
+  const [imagesReady, setImagesReady] = useState(false);
 
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previewRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imagesRef = useRef<HTMLImageElement[]>([]);
+  const dragInfo = useRef<{ id: string | null }>({ id: null });
+  const rafRef = useRef<number>(0);
 
   const layout = LAYOUTS.find((l) => l.id === selectedLayout) ?? LAYOUTS[0];
   const aspectW = layout.canvasWidth;
   const aspectH = layout.canvasHeight;
 
-  // Debounced preview rebuild
-  const refreshPreview = useCallback(
+  // Pre-load photo images once on mount
+  useEffect(() => {
+    let cancelled = false;
+    preloadImages(session.photos).then((imgs) => {
+      if (cancelled) return;
+      imagesRef.current = imgs;
+      setImagesReady(true);
+    });
+    return () => { cancelled = true; };
+  }, [session.photos]);
+
+  // Synchronous canvas repaint — called on every change
+  const repaint = useCallback(
     (curOverlays: TextOverlay[], curFrame: FrameSettings, curLayoutId: LayoutId) => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(async () => {
-        setPreviewing(true);
-        const url = await buildComposite(
-          session.photos,
-          curLayoutId,
-          curOverlays,
-          curFrame,
-        );
-        if (url) setPreviewUrl(url);
-        setPreviewing(false);
-      }, 500);
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => {
+        const canvas = canvasRef.current;
+        if (!canvas || imagesRef.current.length === 0) return;
+        const curLayout = LAYOUTS.find((l) => l.id === curLayoutId) ?? LAYOUTS[0];
+        canvas.width = curLayout.canvasWidth;
+        canvas.height = curLayout.canvasHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        drawComposite(ctx, imagesRef.current, curLayout, curOverlays, curFrame);
+      });
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [session.photos, session.filter],
+    [],
   );
 
-  // Trigger preview on first mount
+  // Initial paint once images are ready
   useEffect(() => {
-    refreshPreview(overlays, frame, selectedLayout);
+    if (imagesReady) repaint(overlays, frame, selectedLayout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [imagesReady]);
 
   const updateFrame = (f: FrameSettings) => {
     setFrameLocal(f);
-    refreshPreview(overlays, f, selectedLayout);
+    repaint(overlays, f, selectedLayout);
   };
 
   const updateLayout = (id: LayoutId) => {
     setSelectedLayoutLocal(id);
-    refreshPreview(overlays, frame, id);
+    repaint(overlays, frame, id);
   };
 
   const updateOverlays = (next: TextOverlay[]) => {
     setOverlays(next);
-    refreshPreview(next, frame, selectedLayout);
+    repaint(next, frame, selectedLayout);
   };
 
   // Click-to-position text on preview
@@ -357,6 +369,29 @@ export default function FrameEditor() {
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
     updateOverlays(overlays.map((o) => o.id === selectedOverlayId ? { ...o, x, y } : o));
+  };
+
+  // Drag-to-position text
+  const handleDragStart = (e: React.PointerEvent<HTMLDivElement>, id: string) => {
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragInfo.current.id = id;
+    if (selectedOverlayId !== id) setSelectedOverlayId(id);
+  };
+
+  const handleDragMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragInfo.current.id) return;
+    const rect = previewRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+    updateOverlays(overlays.map((o) => o.id === dragInfo.current.id ? { ...o, x, y } : o));
+  };
+
+  const handleDragEnd = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragInfo.current.id) return;
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    dragInfo.current.id = null;
   };
 
   const addOverlay = () => {
@@ -369,7 +404,7 @@ export default function FrameEditor() {
     const updated = [...overlays, next];
     setOverlays(updated);
     setSelectedOverlayId(next.id);
-    refreshPreview(updated, frame, selectedLayout);
+    repaint(updated, frame, selectedLayout);
   };
 
   const handleDone = async () => {
@@ -377,7 +412,7 @@ export default function FrameEditor() {
     setLayout(selectedLayout);
     setFrameSettings(frame);
     setTextOverlays(overlays);
-    // Build final composite
+    // Build final composite as data URL for download
     const final = await buildComposite(session.photos, selectedLayout, overlays, frame);
     if (final) setComposite(final);
     setStep('download');
@@ -404,11 +439,13 @@ export default function FrameEditor() {
           )}
           style={{ width: '100%', maxWidth: Math.min(aspectW, 260), aspectRatio: `${aspectW}/${aspectH}` }}
         >
-          {previewUrl && (
-            <img src={previewUrl} alt="Preview" className="w-full h-full object-contain pointer-events-none" />
-          )}
-          {previewing && (
-            <div className="absolute inset-0 bg-surface/60 flex items-center justify-center">
+          <canvas
+            ref={canvasRef}
+            className="w-full h-full pointer-events-none"
+            style={{ display: imagesReady ? 'block' : 'none' }}
+          />
+          {!imagesReady && (
+            <div className="absolute inset-0 bg-surface flex items-center justify-center">
               <motion.div className="w-5 h-5 rounded-full border-2 border-ink/20 border-t-ink"
                 animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }} />
             </div>
@@ -416,12 +453,22 @@ export default function FrameEditor() {
 
           {/* Drag position dots for text overlays (only in text tab) */}
           {activeTab === 'text' && overlays.map((o) => (
-            <div key={o.id} className="absolute pointer-events-none"
-              style={{ left: `${o.x}%`, top: `${o.y}%`, transform: 'translate(-50%, -50%)' }}>
-              <div className={cn(
-                'w-3 h-3 rounded-full border-2 border-white shadow-md transition-all',
-                o.id === selectedOverlayId ? 'bg-brand scale-125' : 'bg-white/60',
-              )} />
+            <div key={o.id} className="absolute pointer-events-auto"
+              style={{ left: `${o.x}%`, top: `${o.y}%`, transform: 'translate(-50%, -50%)', touchAction: 'none' }}>
+              <div
+                onPointerDown={(e) => handleDragStart(e, o.id)}
+                onPointerMove={handleDragMove}
+                onPointerUp={handleDragEnd}
+                onPointerCancel={handleDragEnd}
+                className={cn(
+                  'w-5 h-5 -m-1 flex items-center justify-center cursor-grab active:cursor-grabbing transition-all',
+                )}
+              >
+                <div className={cn(
+                  'w-3 h-3 rounded-full border-2 border-white shadow-md transition-all pointer-events-none',
+                  o.id === selectedOverlayId ? 'bg-brand scale-125' : 'bg-white/60',
+                )} />
+              </div>
             </div>
           ))}
 
@@ -433,7 +480,7 @@ export default function FrameEditor() {
                 style={{ background: 'rgba(13,13,13,0.6)', backdropFilter: 'blur(4px)' }}
               >
                 <MousePointerClick size={10} />
-                Ketuk untuk memposisikan
+                Ketuk atau seret untuk memposisikan
               </span>
             </div>
           )}

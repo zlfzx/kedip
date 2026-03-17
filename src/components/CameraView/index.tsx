@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FlipHorizontal2, RotateCcw, AlertCircle, Upload } from 'lucide-react';
+import { FlipHorizontal2, RotateCcw, AlertCircle, Upload, SwitchCamera } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useCamera } from '../../hooks/useCamera';
 import { useCapture } from '../../hooks/useCapture';
@@ -194,9 +194,12 @@ export default function CameraView() {
           </div>
         )}
 
-        <button onClick={flipCamera} className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
+        {/* Camera facing toggle — replaced in bottom bar; keep a compact icon here on desktop */}
+        <button onClick={flipCamera} className="w-9 h-9 rounded-xl bg-white/10 items-center justify-center hover:bg-white/20 transition-colors hidden md:flex" aria-label="Ganti kamera">
           <FlipHorizontal2 size={16} className="text-white/80" />
         </button>
+        {/* On mobile: spacer so layout stays symmetric (toggle is below) */}
+        <div className="w-9 md:hidden" />
       </div>
 
       {/* ── Camera viewport ── */}
@@ -280,14 +283,41 @@ export default function CameraView() {
             <div className="w-11" />
           )}
 
-          {/* Analog shutter */}
-          <motion.button id="capture-btn" onClick={handleCapture} disabled={captureDisabled}
-            className={cn('w-[68px] h-[68px] rounded-full bg-white border-[3px] border-white flex items-center justify-center shadow-md',
-              captureDisabled && 'opacity-30 cursor-not-allowed',
-            )}
-            whileTap={captureDisabled ? {} : { scale: 0.9 }}>
-            <div className={cn('w-[50px] h-[50px] rounded-full bg-ink transition-transform duration-100', isCapturing && 'scale-90')} />
-          </motion.button>
+          {/* Camera facing pill + shutter centered group */}
+          <div className="flex flex-col items-center gap-2">
+            {/* Depan / Belakang toggle — visible on mobile */}
+            <div className="flex items-center gap-1 bg-white/10 rounded-full p-1 md:hidden">
+              <button
+                onClick={() => facingMode !== 'user' && flipCamera()}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1 rounded-full font-body font-medium text-xs transition-all',
+                  facingMode === 'user' ? 'bg-white text-ink shadow-sm' : 'text-white/50 hover:text-white',
+                )}
+              >
+                <SwitchCamera size={11} />
+                Depan
+              </button>
+              <button
+                onClick={() => facingMode !== 'environment' && flipCamera()}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1 rounded-full font-body font-medium text-xs transition-all',
+                  facingMode === 'environment' ? 'bg-white text-ink shadow-sm' : 'text-white/50 hover:text-white',
+                )}
+              >
+                <SwitchCamera size={11} className="scale-x-[-1]" />
+                Belakang
+              </button>
+            </div>
+
+            {/* Analog shutter */}
+            <motion.button id="capture-btn" onClick={handleCapture} disabled={captureDisabled}
+              className={cn('w-[68px] h-[68px] rounded-full bg-white border-[3px] border-white flex items-center justify-center shadow-md',
+                captureDisabled && 'opacity-30 cursor-not-allowed',
+              )}
+              whileTap={captureDisabled ? {} : { scale: 0.9 }}>
+              <div className={cn('w-[50px] h-[50px] rounded-full bg-ink transition-transform duration-100', isCapturing && 'scale-90')} />
+            </motion.button>
+          </div>
 
           {/* Upload */}
           <label htmlFor="upload-slot"
