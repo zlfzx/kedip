@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, type Variants } from 'framer-motion';
 import { useSessionStore } from './store/sessionStore';
 import LandingPage from './components/LandingPage';
 import LayoutPicker from './components/LayoutPicker';
@@ -7,10 +7,10 @@ import PhotoStrip from './components/PhotoStrip';
 import FrameEditor from './components/FrameEditor';
 import DownloadScreen from './components/DownloadScreen';
 
-const pageVariants = {
+const pageVariants: Variants = {
   initial: { opacity: 0, y: 24 },
-  animate: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.0, 0.0, 0.2, 1.0] } },
-  exit:    { opacity: 0, y: -16, transition: { duration: 0.2, ease: [0.4, 0.0, 1.0, 1.0] } },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.0, 0.0, 0.2, 1.0] as const } },
+  exit:    { opacity: 0, y: -16, transition: { duration: 0.2, ease: [0.4, 0.0, 1.0, 1.0] as const } },
 };
 
 export default function App() {
