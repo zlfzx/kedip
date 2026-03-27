@@ -7,7 +7,7 @@ import { useCompositor } from '../../hooks/useCompositor';
 import { LAYOUTS } from '../../utils/layouts';
 import { THEMES, getThemeIcon } from '../../utils/themes';
 import { preloadImages, drawComposite } from '../../utils/compositor';
-import type { TextOverlay, FrameSettings, LayoutId, ThemeId } from '../../types';
+import type { TextOverlay, FrameSettings, LayoutId } from '../../types';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
